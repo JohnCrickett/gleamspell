@@ -79,3 +79,66 @@ pub fn correct_with_no_known_words_test() {
   // "xyz" has no edits that match known words, so return original
   assert gleamspell.correct("xyz", frequencies) == "xyz"
 }
+
+pub fn correct_with_correct_word_test() {
+  let frequencies =
+    dict.new()
+    |> dict.insert("cat", 100)
+    |> dict.insert("dog", 50)
+
+  // If the word is already correct, return it as-is
+  assert gleamspell.correct("cat", frequencies) == "cat"
+  assert gleamspell.correct("dog", frequencies) == "dog"
+}
+
+pub fn correct_with_distance_2_test() {
+  let frequencies =
+    dict.new()
+    |> dict.insert("hello", 1000)
+    |> dict.insert("help", 200)
+
+  // "helo" is distance 1 from "hello" (delete l)
+  assert gleamspell.correct("helo", frequencies) == "hello"
+
+  // "hallo" is distance 1 from "hello" (replace e with a)
+  // "hallo" is not in the dictionary, so should find "hello" as distance 1 correction
+  assert gleamspell.correct("hallo", frequencies) == "hello"
+
+  // "hxlpo" requires 2 edits to reach "hello" (replace x with e, replace p with l)
+  // Distance 1 edits from "hxlpo" won't include "hello" or "help"
+  // But distance 2 edits will include "hello"
+  assert gleamspell.correct("hxlpo", frequencies) == "hello"
+}
+
+pub fn edits_distance_2_test() {
+  let edits = gleamspell.edits_distance_2("hello")
+
+  // Distance 1 edits should be included
+  // Some deletions: "ello", "hllo", "helo", "hell"
+  assert set.contains(edits, "ello")
+  assert set.contains(edits, "hllo")
+  assert set.contains(edits, "hell")
+
+  // Some transpositions: "ehllo", "hlelo", "heoll", "helol"
+  assert set.contains(edits, "ehllo")
+  assert set.contains(edits, "heoll")
+
+  // Distance 2 edits - apply two operations
+  // Replace h with m, replace e with a: "mallo"
+  assert set.contains(edits, "mallo")
+
+  // Delete h, insert x at start: "xello"
+  assert set.contains(edits, "xello")
+
+  // Replace first l with r, replace second l with w: "herwo"
+  assert set.contains(edits, "herwo")
+
+  // Delete e, insert a: "hallo"
+  assert set.contains(edits, "hallo")
+
+  // Transpose h and e: "ehllo", then replace first l with r: "ehrlo"
+  assert set.contains(edits, "ehrlo")
+
+  // Insert x at start, insert y at end: "xhelloy"
+  assert set.contains(edits, "xhelloy")
+}

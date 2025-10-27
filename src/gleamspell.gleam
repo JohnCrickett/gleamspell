@@ -96,32 +96,74 @@ pub fn edits_distance_1(word: String) -> set.Set(String) {
   |> set.from_list
 }
 
-/// Find the best correction for a misspelled word
-/// Returns the most frequently occurring word from valid edits at distance 1
-/// If no valid edits found, returns the original word
-pub fn correct(word: String, frequencies: WordFrequency) -> String {
-  // Generate all edits at distance 1
-  let candidates = edits_distance_1(word)
+/// Generate all edits at distance 2 from a word
+/// Returns a set of all possible words that are up to two edits away
+pub fn edits_distance_2(word: String) -> set.Set(String) {
+  let distance_1 = edits_distance_1(word)
 
-  // Filter to only known words (words in the frequency table)
-  let known_words =
-    candidates
-    |> set.filter(fn(candidate) { dict.has_key(frequencies, candidate) })
+  // Generate distance 2 edits by applying edits_distance_1 to each distance 1 edit
+  let distance_2 =
+    distance_1
     |> set.to_list
+    |> list.flat_map(fn(edit) { edits_distance_1(edit) |> set.to_list })
+    |> set.from_list
 
-  // Return the most frequently occurring word, or the original word if none found
-  case known_words {
-    [] -> word
-    words -> {
-      words
-      |> list.sort(fn(a, b) {
-        let freq_a = dict.get(frequencies, a) |> result.unwrap(0)
-        let freq_b = dict.get(frequencies, b) |> result.unwrap(0)
-        int.compare(freq_b, freq_a)
-        // Sort descending by frequency
-      })
-      |> list.first
-      |> result.unwrap(word)
+  // Combine distance 1 and distance 2 edits
+  set.union(distance_1, distance_2)
+}
+
+/// Find the best correction for a misspelled word
+/// 1. If the word is correct, return it
+/// 2. If there are distance 1 corrections, return the most frequent
+/// 3. If no distance 1 corrections, try distance 2 and return the most frequent
+/// 4. If no corrections found, return the original word
+pub fn correct(word: String, frequencies: WordFrequency) -> String {
+  // If the word is already correct, return it
+  case dict.has_key(frequencies, word) {
+    True -> word
+    False -> {
+      // Try distance 1 edits first
+      let distance_1_candidates = edits_distance_1(word)
+      let distance_1_known =
+        distance_1_candidates
+        |> set.filter(fn(candidate) { dict.has_key(frequencies, candidate) })
+        |> set.to_list
+
+      case distance_1_known {
+        [] -> {
+          // No distance 1 corrections, try distance 2
+          let distance_2_candidates = edits_distance_2(word)
+          let distance_2_known =
+            distance_2_candidates
+            |> set.filter(fn(candidate) { dict.has_key(frequencies, candidate) })
+            |> set.to_list
+
+          case distance_2_known {
+            [] -> word
+            words -> {
+              words
+              |> list.sort(fn(a, b) {
+                let freq_a = dict.get(frequencies, a) |> result.unwrap(0)
+                let freq_b = dict.get(frequencies, b) |> result.unwrap(0)
+                int.compare(freq_b, freq_a)
+              })
+              |> list.first
+              |> result.unwrap(word)
+            }
+          }
+        }
+        words -> {
+          // Found distance 1 corrections, return the most frequent
+          words
+          |> list.sort(fn(a, b) {
+            let freq_a = dict.get(frequencies, a) |> result.unwrap(0)
+            let freq_b = dict.get(frequencies, b) |> result.unwrap(0)
+            int.compare(freq_b, freq_a)
+          })
+          |> list.first
+          |> result.unwrap(word)
+        }
+      }
     }
   }
 }
@@ -137,6 +179,9 @@ pub fn main() -> Nil {
         "coding",
         "chalenges",
       ]
+
+      io.println("Spelling corrections with distance 1 and 2 edits:")
+      io.println("")
 
       list.each(test_words, fn(word) {
         let corrected = correct(word, frequencies)
