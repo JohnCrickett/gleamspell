@@ -1,5 +1,5 @@
 # gleamspell
-Gleam solution to [Coding Challenges](https://codingchallenges.fyi/) [build your own Spelling Correction Tool](https://codingchallenges.substack.com/p/coding-challenge-98-spelling-correction) project.
+Gleam solution to [Coding Challenges](https://codingchallenges.fyi/) [build your own Spelling Correction Tool](https://codingchallenges.fyi/challenges/challenge-spelling-correction) project.
 
 This project was built with an AI agent to test it's effectiveness.
 
