@@ -1,4 +1,5 @@
 import gleam/dict
+import gleam/float
 import gleam/int
 import gleam/io
 import gleam/list
@@ -183,13 +184,46 @@ pub fn main() -> Nil {
       io.println("Spelling corrections with distance 1 and 2 edits:")
       io.println("")
 
+      // Get start time in milliseconds
+      let start_time = erlang_now_ms()
+
+      // Perform corrections
       list.each(test_words, fn(word) {
         let corrected = correct(word, frequencies)
         io.println(word <> " -> " <> corrected)
       })
+
+      // Get end time in milliseconds
+      let end_time = erlang_now_ms()
+      let elapsed_ms = end_time - start_time
+      let elapsed_seconds = int.to_float(elapsed_ms) /. 1000.0
+      let words_per_second =
+        int.to_float(list.length(test_words)) /. elapsed_seconds
+
+      io.println("")
+      io.println(
+        "Time taken: "
+        <> int.to_string(elapsed_ms)
+        <> "ms ("
+        <> float.to_string(float.to_precision(elapsed_seconds, 2))
+        <> "s)",
+      )
+      io.println(
+        "Words per second: "
+        <> float.to_string(float.to_precision(words_per_second, 2)),
+      )
     }
     Error(err) -> {
       io.println("Error: " <> err)
     }
   }
+}
+
+// Helper function to get current time in milliseconds
+@external(erlang, "erlang", "now")
+fn erlang_now() -> #(Int, Int, Int)
+
+fn erlang_now_ms() -> Int {
+  let #(mega, sec, micro) = erlang_now()
+  mega * 1_000_000_000 + sec * 1000 + micro / 1000
 }
